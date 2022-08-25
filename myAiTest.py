@@ -37,7 +37,7 @@ def get_data(data_dir):
 #
 #train = get_data('D:/Nishanth Polygence/RoundAboutData')
 # val = get_data('D:/Nishanth Polygence')
-data_dir = 'D:/Nishanth Polygence/RoundAboutData'
+data_dir = 'C:/RoundAboutDebug'
 #Batch size originally 32
 batch_size = 32
 
@@ -60,36 +60,59 @@ val = tf.keras.utils.image_dataset_from_directory(
   image_size=(img_height, img_width),
   batch_size=batch_size)
 
-l = []
-for i in train:
-    #print("This is i:  ")
-    #print(i)
-    #print("This is the end of i")
-    #print(i[0])
-    #print(i[1])
-    length = len(i[1].numpy())
-    for n in range (0,length):
-        if i[1].numpy()[n] == 0:
-            l.append("No Traffic Circle")
-        elif i[1].numpy()[n] == 1:
-            l.append("Approaching")
-        elif i[1].numpy()[n] == 2:
-            l.append("Entering")
-        elif i[1].numpy()[n] == 3:
-            l.append("Inside")
-        elif i[1].numpy()[n]== 4:
-            l.append("Exiting")
-sns.set_style('darkgrid')
-sns.countplot(l)
+# l = [0,0,0,0,0]
+# for num,i in enumerate(train):
+#     #print("This is i:  ")
+#     #print(i)
+#     #print("This is the end of i")
+#     #print(i[0])
+#     #print(i[1])
+#     print(num)
+#     labelSet = i[1].numpy()
+#     length = len(labelSet)
+#     for n in range (0,length):
+#         if labelSet[n] == 0:
+#             #l.append("No Traffic Circle")
+#             l[0]+=1
+#         elif labelSet[n] == 1:
+#             #l.append("Approaching")
+#             l[1] += 1
+#         elif labelSet[n] == 2:
+#             #l.append("Entering")
+#             l[2] += 1
+#         elif labelSet[n] == 3:
+#             #l.append("Inside")
+#             l[3] += 1
+#         elif labelSet[n]== 4:
+#             #l.append("Exiting")
+#             l[4] += 1
+# #sns.set_style('darkgrid')
+# #sns.countplot(l)
+# print(l)
 
-plt.figure(figsize = (5,5))
-plt.imshow(train[1][0])
-plt.title(labels[train[0][1]])
+# plt.figure(figsize=(10, 10))
+# class_names = train.class_names
+# for images, labels in train.take(1):
+#     for i in range(32):
+#         ax = plt.subplot(6, 6, i + 1)
+#         plt.imshow(images[i].numpy().astype("uint8"))
+#         plt.title(class_names[labels[i]])
+#         plt.axis("off")
+# plt.show()
 
-plt.figure(figsize = (5,5))
-plt.imshow(train[-1][0])
-plt.title(labels[train[-1][1]])
-print("plot incomplete")
+# plt.figure(figsize = (5,5))
+# example_set = train.take(1)
+# images = example_set[0]
+# plt.imshow(images[0].numpy().astype("uint8"))
+# plt.show()
+#
+# plt.imshow(train.take(1))
+# plt.title(labels[train[0][1]])
+#
+# plt.figure(figsize = (5,5))
+# plt.imshow(train[-1][0])
+# plt.title(labels[train[-1][1]])
+# print("plot incomplete")
 
 # x_train = []
 # y_train = []
@@ -105,14 +128,14 @@ print("plot incomplete")
 #   y_val.append(label)
 
 # Normalize the data
-x_train = np.array(x_train) / 255
-x_val = np.array(x_val) / 255
-
-x_train.reshape(-1, img_size, img_size, 1)
-y_train = np.array(y_train)
-
-x_val.reshape(-1, img_size, img_size, 1)
-y_val = np.array(y_val)
+# x_train = np.array(x_train) / 255
+# x_val = np.array(x_val) / 255
+#
+# x_train.reshape(-1, img_size, img_size, 1)
+# y_train = np.array(y_train)
+#
+# x_val.reshape(-1, img_size, img_size, 1)
+# y_val = np.array(y_val)
 
 datagen = ImageDataGenerator(
         featurewise_center=False,  # set input mean to 0 over the dataset
@@ -125,10 +148,13 @@ datagen = ImageDataGenerator(
         width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
         height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
         horizontal_flip = True,  # randomly flip images
-        vertical_flip=False)  # randomly flip images
+        vertical_flip=False,
+        validation_split = 0.2)  # randomly flip images
 
 
-datagen.fit(x_train)
+train_generator = datagen.flow_from_directory(directory = data_dir, target_size=(224, 224), classes= ['No Traffic Circle', 'Approaching', 'Entering', 'Inside', 'Exiting'], class_mode='categorical', batch_size=32, shuffle=True)
+
+# datagen.fit(train)
 
 model = Sequential()
 model.add(Conv2D(32,3,padding="same", activation="relu", input_shape=(224,224,3)))
@@ -143,14 +169,24 @@ model.add(Dropout(0.4))
 
 model.add(Flatten())
 model.add(Dense(128,activation="relu"))
-model.add(Dense(2, activation="softmax"))
+model.add(Dense(5, activation="softmax"))
 
 model.summary()
 
 opt = Adam(lr=0.000001)
-model.compile(optimizer = opt , loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True) , metrics = ['accuracy'])
+model.compile(optimizer = opt , loss = 'categorical_crossentropy' , metrics = ['accuracy'])
 
-history = model.fit(x_train,y_train,epochs = 500 , validation_data = (x_val, y_val))
+history = model.fit(train_generator,epochs = 2)
+
+# tf.keras.callbacks.EarlyStopping(
+#     monitor="val_loss",
+#     min_delta=0,
+#     patience=0,
+#     verbose=0,
+#     mode="auto",
+#     baseline=None,
+#     restore_best_weights=False
+# )
 
 acc = history.history['accuracy']
 val_acc = history.history['val_accuracy']
@@ -218,4 +254,5 @@ predictions = predictions.reshape(1,-1)[0]
 
 print(classification_report(y_val, predictions, target_names = ['No Traffic Circle(Class 0)','Approaching (Class 1)','Entering (Class2) ','Inside (Class3)','Exiting (Class4)']))
 
-
+model.save("model.h5")
+print("Saved model to disk")
